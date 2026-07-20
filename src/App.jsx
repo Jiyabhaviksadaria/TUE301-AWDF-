@@ -1,37 +1,55 @@
-import Header from "./components/Header";
-import About from "./components/About";
-import Skills from "./components/Skills";
-import Footer from "./components/Footer";
+import { useEffect, useState } from 'react';
+import { NavLink, Route, Routes } from 'react-router-dom';
+import './App.css';
+import Home from './Components/Home';
+import Projects from './Components/Projects';
+import Contact from './Components/Contact';
+import NotFound from './Components/NotFound';
 
 function App() {
-  const skills = [
-    "HTML",
-    "CSS",
-    "JavaScript",
-    "React",
-    "Python",
-    "Machine Learning",
-  ];
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const rootElement = document.documentElement;
+
+    rootElement.classList.toggle('theme-dark', isDarkMode);
+    rootElement.classList.toggle('theme-light', !isDarkMode);
+  }, [isDarkMode]);
 
   return (
-    <>
-      <Header
-        name="Harshil Thakkar"
-        role="AI & ML Student | Full Stack Developer"
-      />
+    <div className="app-shell">
+      <header className="topbar">
+        <div>
+          <p className="eyebrow">Student Portfolio</p>
+          <h1 className="site-title">Harshil Thakkar</h1>
+        </div>
 
-      <About
-        title="About Me"
-        description="I am passionate about Artificial Intelligence, Web Development, and creating impactful software solutions."
-      />
+        <nav className="nav-links" aria-label="Primary navigation">
+          <NavLink to="/" end>
+            Home
+          </NavLink>
+          <NavLink to="/projects">Projects</NavLink>
+          <NavLink to="/contact">Contact</NavLink>
+        </nav>
 
-      <Skills skills={skills} />
+        <button
+          type="button"
+          className="theme-toggle"
+          onClick={() => setIsDarkMode((currentValue) => !currentValue)}
+        >
+          {isDarkMode ? 'Light mode' : 'Dark mode'}
+        </button>
+      </header>
 
-      <Footer
-        email="harshilthakkar3435@gmail.com"
-        copyright="© 2026 Harshil Thakkar"
-      />
-    </>
+      <main className="page-content">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/projects" element={<Projects />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </main>
+    </div>
   );
 }
 
