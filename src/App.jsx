@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NavLink, Route, Routes } from 'react-router-dom';
+import { NavLink, Route, Routes, Navigate } from 'react-router-dom';
 import './App.css';
 import Home from './Components/Home';
 import Projects from './Components/Projects';
@@ -44,7 +44,8 @@ function App() {
       <main className="page-content">
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/projects" element={<Projects />} />
+          <Route path="/projects" element={<Navigate to="/projects/HARSHIL3431" replace />} />
+          <Route path="/projects/:username" element={<Projects />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
