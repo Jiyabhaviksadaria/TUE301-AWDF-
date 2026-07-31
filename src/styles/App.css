@@ -248,3 +248,74 @@
     justify-content: flex-start;
   }
 }
+
+/* Table Styles for Tasks Section */
+.task-table-container {
+  overflow-x: auto;
+  margin-top: 24px;
+}
+
+.task-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.task-table th,
+.task-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.task-table th {
+  color: var(--text-h);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  background: rgba(127, 127, 127, 0.04);
+}
+
+.task-table tr:hover {
+  background: rgba(127, 127, 127, 0.02);
+}
+
+.task-table td {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+/* Action buttons in Table */
+.edit-btn,
+.delete-btn {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  color: var(--text-h);
+  cursor: pointer;
+  margin-right: 8px;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.edit-btn:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.delete-btn:hover {
+  border-color: #ef4444;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.error-message {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  padding: 10px 14px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}

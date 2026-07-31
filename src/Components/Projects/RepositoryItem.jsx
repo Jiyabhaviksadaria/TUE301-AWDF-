@@ -1,4 +1,4 @@
-import { getLanguageColor, formatRelativeDate } from './utils';
+import { getLanguageColor, formatRelativeDate } from '../../utils/githubUtils';
 import { useState } from 'react';
 
 /**

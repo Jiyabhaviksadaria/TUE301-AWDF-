@@ -1,4 +1,4 @@
-import { getTotalStars, getUniqueLanguages } from './utils';
+import { getTotalStars, getUniqueLanguages } from '../../utils/githubUtils';
 
 /**
  * StatsSection — Compact horizontal stats row showing key GitHub metrics.

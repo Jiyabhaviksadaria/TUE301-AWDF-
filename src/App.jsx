@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Route, Routes, Navigate } from 'react-router-dom';
-import './App.css';
-import Home from './Components/Home';
-import Projects from './Components/Projects';
-import Contact from './Components/Contact';
-import NotFound from './Components/NotFound';
+import './styles/App.css';
+import Home from './pages/Home';
+import Projects from './pages/Projects';
+import Contact from './pages/Contact';
+import Tasks from './pages/Tasks';
+import NotFound from './pages/NotFound';
 
 function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -29,6 +30,7 @@ function App() {
             Home
           </NavLink>
           <NavLink to="/projects">Projects</NavLink>
+          <NavLink to="/tasks">Tasks</NavLink>
           <NavLink to="/contact">Contact</NavLink>
         </nav>
 
@@ -46,6 +48,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/projects" element={<Navigate to="/projects/HARSHIL3431" replace />} />
           <Route path="/projects/:username" element={<Projects />} />
+          <Route path="/tasks" element={<Tasks />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

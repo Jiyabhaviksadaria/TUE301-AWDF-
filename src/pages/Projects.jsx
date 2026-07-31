@@ -1,15 +1,15 @@
 import { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { useGitHubData } from './hooks';
-import { getUniqueLanguages, sortRepos, filterRepos } from './utils';
-import GitHubProfile from './GitHubProfile';
-import StatsSection from './StatsSection';
-import Toolbar from './Toolbar';
-import RepositoryList from './RepositoryList';
-import LoadingSkeleton from './LoadingSkeleton';
-import ErrorState from './ErrorState';
-import EmptyState from './EmptyState';
-import './Projects.css';
+import { useGitHubData } from '../hooks/useGitHubData';
+import { getUniqueLanguages, sortRepos, filterRepos } from '../utils/githubUtils';
+import GitHubProfile from '../components/Projects/GitHubProfile';
+import StatsSection from '../components/Projects/StatsSection';
+import Toolbar from '../components/Projects/Toolbar';
+import RepositoryList from '../components/Projects/RepositoryList';
+import LoadingSkeleton from '../components/Projects/LoadingSkeleton';
+import ErrorState from '../components/Projects/ErrorState';
+import EmptyState from '../components/Projects/EmptyState';
+import '../styles/Projects.css';
 
 /**
  * ProjectsPage — Main composition root for the GitHub portfolio viewer.
