@@ -16,7 +16,7 @@ function Home() {
   return (
     <div className="hero-card">
       <Header
-        name="Harshil Thakkar"
+        name="Jiya Sadaria"
         role="AI & ML Student | Full Stack Developer"
       />
 
@@ -61,8 +61,8 @@ function Home() {
       </section>
 
       <Footer
-        email="harshilthakkar3435@gmail.com"
-        copyright="© 2026 Harshil Thakkar"
+        email="jiyasadaria@gmail.com"
+        copyright="© 2026 Jiya Sadaria"
       />
     </div>
   );

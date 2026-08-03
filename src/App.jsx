@@ -22,7 +22,7 @@ function App() {
       <header className="topbar">
         <div>
           <p className="eyebrow">Student Portfolio</p>
-          <h1 className="site-title">Harshil Thakkar</h1>
+          <h1 className="site-title">Jiya Sadaria</h1>
         </div>
 
         <nav className="nav-links" aria-label="Primary navigation">
@@ -46,7 +46,7 @@ function App() {
       <main className="page-content">
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/projects" element={<Navigate to="/projects/HARSHIL3431" replace />} />
+          <Route path="/projects" element={<Navigate to="/projects/Jiyabhaviksadaria" replace />} />
           <Route path="/projects/:username" element={<Projects />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/contact" element={<Contact />} />
