@@ -398,6 +398,12 @@
   margin-bottom: 20px;
 }
 
+.location-pill {
+  margin: 6px 0 0;
+  font-size: 0.84rem;
+  opacity: 0.85;
+}
+
 .csv-actions {
   display: flex;
   gap: 10px;

@@ -25,6 +25,48 @@ function Tasks() {
   const [toast, setToast] = useState(null);
   const [logs, setLogs] = useState(getStoredLogs);
   const [showLogView, setShowLogView] = useState(false);
+  const [locationInfo, setLocationInfo] = useState({
+    ip: 'Detecting...',
+    state: 'Detecting...',
+    country: 'Detecting...',
+  });
+
+  // Detect user IP address, State, and Country on mount
+  useEffect(() => {
+    const detectLocation = async () => {
+      try {
+        const res = await fetch('https://ipapi.co/json/');
+        if (res.ok) {
+          const data = await res.json();
+          setLocationInfo({
+            ip: data.ip || '127.0.0.1',
+            state: data.region || data.city || 'Unknown',
+            country: data.country_name || data.country || 'Unknown',
+          });
+          return;
+        }
+      } catch {
+        // Fallback to secondary IP geolocation service
+      }
+
+      try {
+        const res = await fetch('https://ipwho.is/');
+        if (res.ok) {
+          const data = await res.json();
+          setLocationInfo({
+            ip: data.ip || '127.0.0.1',
+            state: data.region || data.city || 'Local',
+            country: data.country || 'Local',
+          });
+          return;
+        }
+      } catch {
+        setLocationInfo({ ip: '127.0.0.1', state: 'Local', country: 'Local' });
+      }
+    };
+
+    detectLocation();
+  }, []);
 
   const addLog = (action, taskId, taskTitle, taskDesc) => {
     const now = new Date();
@@ -36,6 +78,9 @@ function Tasks() {
       title: taskTitle || 'N/A',
       description: taskDesc || '',
       timestamp: formattedTime,
+      ip: locationInfo.ip,
+      state: locationInfo.state,
+      country: locationInfo.country,
     };
     setLogs((prevLogs) => {
       const updated = [newLog, ...prevLogs];
@@ -131,7 +176,17 @@ function Tasks() {
   };
 
   const generateCSV = () => {
-    const headers = ['Log ID', 'Action', 'Task ID', 'Title', 'Description', 'Timestamp'];
+    const headers = [
+      'Log ID',
+      'Action',
+      'Task ID',
+      'Title',
+      'Description',
+      'Timestamp',
+      'IP Address',
+      'State',
+      'Country',
+    ];
     const rows = logs.map((log) => [
       log.id,
       log.action,
@@ -139,6 +194,9 @@ function Tasks() {
       `"${(log.title || '').replace(/"/g, '""')}"`,
       `"${(log.description || '').replace(/"/g, '""')}"`,
       `"${log.timestamp}"`,
+      `"${log.ip || 'N/A'}"`,
+      `"${(log.state || 'N/A').replace(/"/g, '""')}"`,
+      `"${(log.country || 'N/A').replace(/"/g, '""')}"`,
     ]);
     return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
   };
@@ -173,6 +231,9 @@ function Tasks() {
         <div>
           <p className="eyebrow">Tasks</p>
           <h2>Task Management</h2>
+          <p className="muted location-pill">
+            📍 IP: {locationInfo.ip} | Location: {locationInfo.state}, {locationInfo.country}
+          </p>
         </div>
 
         <div className="csv-actions">
@@ -295,6 +356,9 @@ function Tasks() {
                   <th>Title</th>
                   <th>Description</th>
                   <th>Timestamp</th>
+                  <th>IP Address</th>
+                  <th>State</th>
+                  <th>Country</th>
                 </tr>
               </thead>
               <tbody>
@@ -309,11 +373,14 @@ function Tasks() {
                     <td>{log.title}</td>
                     <td>{log.description || '-'}</td>
                     <td>{log.timestamp}</td>
+                    <td>{log.ip || '-'}</td>
+                    <td>{log.state || '-'}</td>
+                    <td>{log.country || '-'}</td>
                   </tr>
                 ))}
                 {logs.length === 0 && (
                   <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '20px' }}>
+                    <td colSpan="8" style={{ textAlign: 'center', padding: '20px' }}>
                       No activity logged yet. Add or delete a task to generate CSV logs.
                     </td>
                   </tr>
