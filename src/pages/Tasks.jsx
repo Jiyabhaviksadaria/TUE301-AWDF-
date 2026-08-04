@@ -7,6 +7,14 @@ function Tasks() {
   const [description, setDescription] = useState('');
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [error, setError] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast((current) => (current?.message === message ? null : current));
+    }, 3500);
+  };
 
   const fetchTasks = async () => {
     try {
@@ -40,10 +48,12 @@ function Tasks() {
         await taskService.update(editingTaskId, taskPayload);
         await fetchTasks();
         setEditingTaskId(null);
+        showToast(`Task "${title}" updated successfully!`, 'success');
       } else {
         // Create new task
         await taskService.create(taskPayload);
         await fetchTasks();
+        showToast(`Task "${title}" saved successfully!`, 'success');
       }
 
       // Reset form
@@ -68,11 +78,12 @@ function Tasks() {
     setError(null);
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id, taskTitle) => {
     try {
       setError(null);
       await taskService.delete(id);
       await fetchTasks();
+      showToast(`Task ${taskTitle ? `"${taskTitle}" ` : ''}deleted successfully!`, 'delete');
       if (editingTaskId === id) {
         handleCancelEdit();
       }
@@ -87,6 +98,18 @@ function Tasks() {
         <p className="eyebrow">Tasks</p>
         <h2>Task Management</h2>
       </div>
+
+      {toast && (
+        <div className={`toast-notification toast-${toast.type}`} role="status">
+          <span className="toast-icon">
+            {toast.type === 'success' ? '✓' : toast.type === 'delete' ? '🗑️' : 'ℹ️'}
+          </span>
+          <span className="toast-message">{toast.message}</span>
+          <button className="toast-close" onClick={() => setToast(null)} aria-label="Close notification">
+            &times;
+          </button>
+        </div>
+      )}
 
       {error && <div className="error-message">{error}</div>}
 
@@ -146,7 +169,7 @@ function Tasks() {
                   <button className="edit-btn" onClick={() => handleStartEdit(task)}>
                     Edit
                   </button>
-                  <button className="delete-btn" onClick={() => handleDelete(task.id)}>
+                  <button className="delete-btn" onClick={() => handleDelete(task.id, task.title)}>
                     Delete
                   </button>
                 </td>
