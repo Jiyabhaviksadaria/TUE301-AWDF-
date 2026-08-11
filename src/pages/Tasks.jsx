@@ -18,6 +18,8 @@ const saveLogsToStorage = (logs) => {
 
 function Tasks() {
   const [tasks, setTasks] = useState([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [editingTaskId, setEditingTaskId] = useState(null);
@@ -96,11 +98,21 @@ function Tasks() {
     }, 3500);
   };
 
-  const fetchTasks = async () => {
+  const LIMIT = 5;
+
+  const fetchTasks = async (p = page) => {
     try {
       setError(null);
-      const data = await taskService.getAll();
-      setTasks(data);
+      const res = await taskService.getAll(p, LIMIT);
+      // res may be either { tasks, meta } or (legacy) array
+      if (Array.isArray(res)) {
+        setTasks(res);
+        setTotalPages(1);
+      } else {
+        setTasks(res.tasks || []);
+        setTotalPages(res.meta?.totalPages || 1);
+        setPage(res.meta?.page || p);
+      }
     } catch (err) {
       setError(err.message);
     }
@@ -109,7 +121,7 @@ function Tasks() {
   // Load all tasks on mount
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchTasks();
+    fetchTasks(1);
   }, []);
 
   const handleSubmit = async (event) => {
@@ -126,14 +138,15 @@ function Tasks() {
       if (editingTaskId) {
         // Update existing task
         await taskService.update(editingTaskId, taskPayload);
-        await fetchTasks();
+        await fetchTasks(page);
         addLog('UPDATED', editingTaskId, title, description);
         setEditingTaskId(null);
         showToast(`Task "${title}" updated & logged in CSV!`, 'success');
       } else {
         // Create new task
         const created = await taskService.create(taskPayload);
-        await fetchTasks();
+        // After creating, fetch the first page (or stay on current page)
+        await fetchTasks(page);
         addLog('SAVED', created.id || 'NEW', title, description);
         showToast(`Task "${title}" saved & logged in CSV!`, 'success');
       }
@@ -164,7 +177,14 @@ function Tasks() {
     try {
       setError(null);
       await taskService.delete(id);
-      await fetchTasks();
+      // refetch current page; if it becomes empty, move back one page
+      await fetchTasks(page);
+      // adjust page if current page has no items
+      if (tasks.length === 1 && page > 1) {
+        const newPage = page - 1;
+        setPage(newPage);
+        await fetchTasks(newPage);
+      }
       addLog('DELETED', id, taskTitle, taskDesc || '');
       showToast(`Task ${taskTitle ? `"${taskTitle}" ` : ''}deleted & logged in CSV!`, 'delete');
       if (editingTaskId === id) {
@@ -173,6 +193,12 @@ function Tasks() {
     } catch (err) {
       setError(err.message);
     }
+  };
+
+  const handlePageChange = async (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setPage(newPage);
+    await fetchTasks(newPage);
   };
 
   const generateCSV = () => {
@@ -335,6 +361,18 @@ function Tasks() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="pagination" style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 12 }}>
+        <button className="form-button" onClick={() => handlePageChange(page - 1)} disabled={page <= 1}>
+          Previous
+        </button>
+        <div>
+          Page {page} of {totalPages}
+        </div>
+        <button className="form-button" onClick={() => handlePageChange(page + 1)} disabled={page >= totalPages}>
+          Next
+        </button>
       </div>
 
       {showLogView && (

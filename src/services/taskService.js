@@ -20,14 +20,26 @@ const setLocalTasks = (tasks) => {
 
 export const taskService = {
   // GET /tasks
-  getAll: async () => {
+  getAll: async (page = 1, limit = 5) => {
     try {
-      const res = await fetch(API_URL);
+      const res = await fetch(`${API_URL}?page=${page}&limit=${limit}`);
       if (!res.ok) throw new Error('Failed to load tasks');
       return await res.json();
     } catch {
       console.warn('Backend API at http://localhost:5000/tasks offline. Falling back to local storage.');
-      return getLocalTasks();
+      const local = getLocalTasks();
+      const total = local.length;
+      const start = (page - 1) * limit;
+      const pageItems = local.slice(start, start + limit);
+      return {
+        tasks: pageItems,
+        meta: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit) || 1,
+        },
+      };
     }
   },
 
