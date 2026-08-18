@@ -1,22 +1,23 @@
 :root {
-  --text: #5f6372;
-  --text-h: #12131a;
-  --bg: #f7f5f2;
-  --border: #d8d5cf;
-  --code-bg: #ece6d7;
-  --accent: #9a5cff;
-  --accent-bg: rgba(154, 92, 255, 0.14);
-  --accent-border: rgba(154, 92, 255, 0.42);
+  --text: #1e443a;
+  --text-h: #0b251e;
+  --bg-pattern: repeating-linear-gradient(45deg, #92c9b1, #92c9b1 20px, #b3e0d2 20px, #b3e0d2 40px);
+  --bg: rgba(255, 255, 255, 0.88);
+  --border: rgba(45, 106, 79, 0.25);
+  --code-bg: rgba(146, 201, 177, 0.25);
+  --accent: #2d6a4f;
+  --accent-bg: rgba(45, 106, 79, 0.15);
+  --accent-border: rgba(45, 106, 79, 0.45);
   --shadow:
-    rgba(15, 23, 42, 0.08) 0 18px 28px -12px,
-    rgba(15, 23, 42, 0.04) 0 8px 12px -8px;
+    rgba(15, 45, 35, 0.12) 0 18px 28px -12px,
+    rgba(15, 45, 35, 0.06) 0 8px 12px -8px;
 
   --sans: 'Trebuchet MS', 'Segoe UI', sans-serif;
   --heading: 'Trebuchet MS', 'Segoe UI', sans-serif;
   --mono: Consolas, 'Liberation Mono', monospace;
 
   color: var(--text);
-  background: var(--bg);
+  background: var(--bg-pattern);
   font-family: var(--sans);
   font-size: 18px;
   line-height: 1.55;
@@ -27,17 +28,18 @@
 }
 
 html.theme-dark {
-  --text: #b4b7c4;
-  --text-h: #f4f6fb;
-  --bg: #11141d;
-  --border: #2a3040;
-  --code-bg: #1b2030;
-  --accent: #7dd3fc;
-  --accent-bg: rgba(125, 211, 252, 0.14);
-  --accent-border: rgba(125, 211, 252, 0.42);
+  --text: #a8e0cf;
+  --text-h: #eefbf7;
+  --bg-pattern: repeating-linear-gradient(45deg, #132a21, #132a21 20px, #1a392d 20px, #1a392d 40px);
+  --bg: rgba(15, 35, 28, 0.9);
+  --border: rgba(82, 183, 136, 0.3);
+  --code-bg: rgba(20, 48, 38, 0.7);
+  --accent: #52b788;
+  --accent-bg: rgba(82, 183, 136, 0.18);
+  --accent-border: rgba(82, 183, 136, 0.48);
   --shadow:
-    rgba(0, 0, 0, 0.28) 0 18px 28px -12px,
-    rgba(0, 0, 0, 0.16) 0 8px 12px -8px;
+    rgba(0, 0, 0, 0.35) 0 18px 28px -12px,
+    rgba(0, 0, 0, 0.2) 0 8px 12px -8px;
 }
 
 * {
@@ -46,13 +48,14 @@ html.theme-dark {
 
 html {
   min-height: 100%;
-  background: var(--bg);
+  background: var(--bg-pattern);
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg);
+  background: var(--bg-pattern);
+  background-attachment: fixed;
 }
 
 #root {

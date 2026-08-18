@@ -27,6 +27,16 @@ async function start() {
     tasksCol = db.collection('tasks');
     console.log('Connected to MongoDB at', MONGO_URI, 'DB:', DB_NAME);
 
+    app.get('/', (req, res) => {
+      res.json({
+        message: 'Task Manager API is running!',
+        endpoints: {
+          tasks: '/tasks',
+          taskById: '/tasks/:id'
+        }
+      });
+    });
+
     app.get('/tasks', async (req, res) => {
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
       const limit = Math.max(1, parseInt(req.query.limit, 10) || 5);
@@ -57,7 +67,7 @@ async function start() {
       const data = req.body || {};
       const highest = await tasksCol.find({}).sort({ id: -1 }).limit(1).toArray();
       const nextId = highest[0] && typeof highest[0].id === 'number' ? highest[0].id + 1 : 1;
-      const doc = { id: nextId, ...data };
+      const doc = { id: nextId, status: 'pending', ...data };
       const result = await tasksCol.insertOne(doc);
       const inserted = await tasksCol.findOne({ _id: result.insertedId });
       res.status(201).json(inserted);
