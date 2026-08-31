@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { authService } from '../services/authService';
 
 function GoogleIcon() {
   return (
@@ -24,32 +25,57 @@ function GoogleIcon() {
 }
 
 function Login({ onLogin, onGoogleLogin }) {
+  const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showGoogleModal, setShowGoogleModal] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
 
-    if (!username.trim() || !password.trim()) {
-      setError('Please enter both username and password.');
+    const trimmedUser = username.trim();
+    if (!trimmedUser || !password.trim()) {
+      setError('Please enter both email/username and password.');
       return;
     }
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      const success = onLogin(username.trim(), password);
-      setIsLoading(false);
-
-      if (!success) {
-        setError('Invalid username or password! (Hint: username=jiya, password=24AIML054)');
+    if (isRegisterMode) {
+      // Registration Flow
+      try {
+        const formattedEmail = trimmedUser.includes('@') ? trimmedUser : `${trimmedUser}@example.com`;
+        await authService.register(formattedEmail, password);
+        setSuccessMsg('Registration successful! You can now log in.');
+        setIsRegisterMode(false);
+        setPassword('');
+      } catch (err) {
+        setError(err.message || 'Registration failed.');
+      } finally {
+        setIsLoading(false);
       }
-    }, 400);
+    } else {
+      // Login Flow
+      try {
+        const formattedEmail = trimmedUser.includes('@') ? trimmedUser : `${trimmedUser}@example.com`;
+        await authService.login(formattedEmail, password);
+        onLogin(trimmedUser, password, true);
+      } catch {
+        // Fallback to offline / mock login check
+        const success = onLogin(trimmedUser, password);
+        if (!success) {
+          setError('Invalid email/username or password. (Hint: Register a new user or use jiya / 24AIML054)');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    }
   };
 
   const googleAccounts = [
@@ -66,9 +92,59 @@ function Login({ onLogin, onGoogleLogin }) {
     <div className="login-wrapper">
       <div className="login-card">
         <div className="login-header">
-          <div className="login-badge">🔒 Authentication</div>
-          <h2 className="login-title">Welcome Back</h2>
-          <p className="login-subtitle">Please sign in to access Student Portfolio & Task Manager</p>
+          <div className="login-badge">🔒 JWT Authentication</div>
+          <h2 className="login-title">{isRegisterMode ? 'Create Account' : 'Welcome Back'}</h2>
+          <p className="login-subtitle">
+            {isRegisterMode
+              ? 'Register a new user with secure bcrypt hashing & JWT access'
+              : 'Please sign in to access Student Portfolio & Task Manager'}
+          </p>
+        </div>
+
+        {/* Mode Toggle Tabs */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          <button
+            type="button"
+            className={`form-button ${!isRegisterMode ? 'active' : ''}`}
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              background: !isRegisterMode ? 'var(--primary, #3b82f6)' : 'rgba(255, 255, 255, 0.08)',
+              color: '#fff',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+            onClick={() => {
+              setIsRegisterMode(false);
+              setError('');
+              setSuccessMsg('');
+            }}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            className={`form-button ${isRegisterMode ? 'active' : ''}`}
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              borderRadius: '8px',
+              fontSize: '0.85rem',
+              background: isRegisterMode ? 'var(--primary, #3b82f6)' : 'rgba(255, 255, 255, 0.08)',
+              color: '#fff',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+            onClick={() => {
+              setIsRegisterMode(true);
+              setError('');
+              setSuccessMsg('');
+            }}
+          >
+            Register
+          </button>
         </div>
 
         {error && (
@@ -78,27 +154,44 @@ function Login({ onLogin, onGoogleLogin }) {
           </div>
         )}
 
-        <button
-          type="button"
-          className="google-btn"
-          onClick={() => setShowGoogleModal(true)}
-        >
-          <GoogleIcon />
-          <span>Continue with Google</span>
-        </button>
+        {successMsg && (
+          <div
+            className="login-error-alert"
+            style={{ background: 'rgba(34, 197, 94, 0.15)', borderColor: '#22c55e', color: '#4ade80' }}
+            role="status"
+          >
+            <span className="error-icon">✓</span>
+            <span>{successMsg}</span>
+          </div>
+        )}
 
-        <div className="divider-or">
-          <span>OR</span>
-        </div>
+        {!isRegisterMode && (
+          <>
+            <button
+              type="button"
+              className="google-btn"
+              onClick={() => setShowGoogleModal(true)}
+            >
+              <GoogleIcon />
+              <span>Continue with Google</span>
+            </button>
+
+            <div className="divider-or">
+              <span>OR</span>
+            </div>
+          </>
+        )}
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label htmlFor="login-username">Username</label>
+            <label htmlFor="login-username">
+              {isRegisterMode ? 'Email Address' : 'Username / Email'}
+            </label>
             <input
               id="login-username"
-              type="text"
+              type={isRegisterMode ? 'email' : 'text'}
               className="form-input"
-              placeholder="Enter username (e.g. jiya)"
+              placeholder={isRegisterMode ? 'student@example.com' : 'Enter username or email (e.g. jiya)'}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -112,7 +205,7 @@ function Login({ onLogin, onGoogleLogin }) {
                 id="login-password"
                 type={showPassword ? 'text' : 'password'}
                 className="form-input"
-                placeholder="Enter password"
+                placeholder={isRegisterMode ? 'Enter password (min 6 chars)' : 'Enter password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -129,7 +222,13 @@ function Login({ onLogin, onGoogleLogin }) {
           </div>
 
           <button type="submit" className="login-submit-btn" disabled={isLoading}>
-            {isLoading ? 'Signing In...' : 'Sign In'}
+            {isLoading
+              ? isRegisterMode
+                ? 'Creating Account...'
+                : 'Signing In...'
+              : isRegisterMode
+              ? 'Register'
+              : 'Sign In'}
           </button>
         </form>
 
