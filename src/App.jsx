@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { NavLink, Route, Routes, Navigate, useNavigate } from 'react-router-dom';
 import './styles/App.css';
 import { authService } from './services/authService';
@@ -77,6 +77,12 @@ function App() {
     rootElement.classList.toggle('theme-light', !isDarkMode);
   }, [isDarkMode]);
 
+  const handleLogout = useCallback(() => {
+    authService.removeToken();
+    setIsAuthenticated(false);
+    navigate('/login');
+  }, [navigate]);
+
   // Validate JWT Token on app mount via GET /me
   useEffect(() => {
     const verifySession = async () => {
@@ -98,7 +104,7 @@ function App() {
     };
 
     verifySession();
-  }, []);
+  }, [handleLogout]);
 
   const handleLogin = (username, password, isJwt = false) => {
     if (isJwt) {
@@ -128,12 +134,6 @@ function App() {
     setCurrentUser(userName);
     setIsAuthenticated(true);
     navigate('/');
-  };
-
-  const handleLogout = () => {
-    authService.removeToken();
-    setIsAuthenticated(false);
-    navigate('/login');
   };
 
   return (

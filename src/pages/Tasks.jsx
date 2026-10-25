@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { taskService } from '../services/taskService';
 
 const LOGS_STORAGE_KEY = 'awdf_task_csv_logs';
+const LIMIT = 5;
 
 const getStoredLogs = () => {
   try {
@@ -16,14 +17,34 @@ const saveLogsToStorage = (logs) => {
   localStorage.setItem(LOGS_STORAGE_KEY, JSON.stringify(logs));
 };
 
+// Build a task activity-log entry. Lives outside the component so impure
+// time-based values are not created during render.
+const createTaskLog = (action, taskId, taskTitle, taskDesc, locationInfo) => {
+  const now = new Date();
+  const formattedTime = now.toLocaleString();
+  return {
+    id: now.getTime(),
+    action,
+    taskId: taskId || 'N/A',
+    title: taskTitle || 'N/A',
+    description: taskDesc || '',
+    timestamp: formattedTime,
+    ip: locationInfo.ip,
+    state: locationInfo.state,
+    country: locationInfo.country,
+  };
+};
+
 function Tasks() {
   const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [error, setError] = useState(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [toast, setToast] = useState(null);
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [taskStatus, setTaskStatus] = useState('pending');
@@ -75,19 +96,7 @@ function Tasks() {
   }, []);
 
   const addLog = (action, taskId, taskTitle, taskDesc) => {
-    const now = new Date();
-    const formattedTime = now.toLocaleString();
-    const newLog = {
-      id: Date.now(),
-      action,
-      taskId: taskId || 'N/A',
-      title: taskTitle || 'N/A',
-      description: taskDesc || '',
-      timestamp: formattedTime,
-      ip: locationInfo.ip,
-      state: locationInfo.state,
-      country: locationInfo.country,
-    };
+    const newLog = createTaskLog(action, taskId, taskTitle, taskDesc, locationInfo);
     setLogs((prevLogs) => {
       const updated = [newLog, ...prevLogs];
       saveLogsToStorage(updated);
@@ -102,11 +111,11 @@ function Tasks() {
     }, 3500);
   };
 
-  const LIMIT = 5;
-
-  const fetchTasks = async (p = page) => {
+  const fetchTasks = useCallback(async (p = 1) => {
+    setLoading(true);
     try {
       setError(null);
+      setLoadFailed(false);
       const res = await taskService.getAll(p, LIMIT);
       // res may be either { tasks, meta } or (legacy) array
       if (Array.isArray(res)) {
@@ -117,16 +126,20 @@ function Tasks() {
         setTotalPages(res.meta?.totalPages || 1);
         setPage(res.meta?.page || p);
       }
-    } catch (err) {
-      setError(err.message);
+    } catch {
+      setTasks([]);
+      setLoadFailed(true);
+      setError('Unable to load tasks right now.');
+    } finally {
+      setLoading(false);
     }
-  };
+  }, []);
 
   // Load all tasks on mount
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTasks(1);
-  }, []);
+  }, [fetchTasks]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -315,7 +328,21 @@ function Tasks() {
         </div>
       )}
 
-      {error && <div className="error-message">{error}</div>}
+      {error && (
+        <div className="error-message" role="alert">
+          <span>{error}</span>
+          {loadFailed && (
+            <button
+              type="button"
+              className="form-button"
+              style={{ marginLeft: '12px', padding: '6px 14px' }}
+              onClick={() => fetchTasks(page)}
+            >
+              Retry
+            </button>
+          )}
+        </div>
+      )}
 
       <form className="contact-form" onSubmit={handleSubmit}>
         <label htmlFor="title">
@@ -394,6 +421,19 @@ function Tasks() {
           </button>
         </div>
       </div>
+
+      {loading && tasks.length === 0 && (
+        <p style={{ textAlign: 'center', padding: '24px' }} aria-live="polite">
+          Loading tasks...
+        </p>
+      )}
+
+      {!loading && !loadFailed && tasks.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '24px' }}>
+          <h3 style={{ margin: '0 0 8px' }}>No tasks yet</h3>
+          <p style={{ margin: 0 }}>Create your first task to get started.</p>
+        </div>
+      )}
 
       {viewMode === '3-parts' ? (
         <div className="three-parts-container">

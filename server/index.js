@@ -9,6 +9,7 @@ import {
   validateRegister,
   validateLogin,
 } from './middleware/authMiddleware.js';
+import cache, { cacheCounters } from './cache.js';
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017';
 const DB_NAME = process.env.DB_NAME || 'taskmanager';
@@ -36,6 +37,17 @@ const inMemoryTasks = [
   { id: 1, title: 'Complete Practical Assignment', description: 'Finish task management integration', status: 'pending' },
   { id: 2, title: 'Review React Router', description: 'Ensure all pages route correctly', status: 'pending' },
 ];
+
+// Delete every cached page of the task list for a given user.
+// Page-specific keys look like: all_tasks_<userId>_p<page>_l<limit>
+function invalidateUserTasksCache(userId) {
+  const prefix = `all_tasks_${userId}`;
+  const keys = cache.keys().filter((k) => k.startsWith(prefix));
+  keys.forEach((k) => {
+    cache.del(k);
+    console.log(`CACHE INVALIDATED: ${k}`);
+  });
+}
 
 // -------------------------------------------------------------
 // SWAGGER OPENAPI DOCUMENTATION SPECIFICATION
@@ -224,9 +236,13 @@ async function start() {
     tasksCol = db.collection('tasks');
     usersCol = db.collection('users');
     await usersCol.createIndex({ email: 1 }, { unique: true });
+    // Query optimization: /tasks always filters by userId ({ userId: req.user.id } or
+    // { $or: [{ userId }, { userId: { $exists: false } }] }), so an index on userId
+    // avoids a full collection scan on every request.
+    await tasksCol.createIndex({ userId: 1 });
     isMongoConnected = true;
     console.log('Connected to MongoDB at', MONGO_URI, 'DB:', DB_NAME);
-  } catch (err) {
+  } catch {
     isMongoConnected = false;
     console.warn('MongoDB connection unavailable at', MONGO_URI, '- Running with in-memory persistence.');
   }
@@ -368,7 +384,7 @@ async function start() {
         id: req.user.id,
         email: req.user.email,
       });
-    } catch (err) {
+    } catch {
       res.status(500).json({ message: 'Server error retrieving user profile' });
     }
   });
@@ -378,8 +394,25 @@ async function start() {
     try {
       const page = Math.max(1, parseInt(req.query.page, 10) || 1);
       const limit = Math.max(1, parseInt(req.query.limit, 10) || 5);
-      const skip = (page - 1) * limit;
 
+      // Cache key must be per-user: never serve one user's tasks to another.
+      const cacheKey = `all_tasks_${req.user.id}`;
+
+      // Pagination is part of the cached payload — include page/limit in the key
+      // so different pages don't overwrite each other.
+      const cacheKeyPaged = `${cacheKey}_p${page}_l${limit}`;
+
+      const cached = cache.get(cacheKeyPaged);
+      if (cached) {
+        cacheCounters.hits += 1;
+        console.log(`CACHE HIT: ${cacheKeyPaged}`);
+        return res.json(cached);
+      }
+
+      cacheCounters.misses += 1;
+      console.log(`CACHE MISS: ${cacheKeyPaged}`);
+
+      const skip = (page - 1) * limit;
       let tasks = [];
       let total = 0;
 
@@ -395,7 +428,7 @@ async function start() {
         tasks = userTasks.slice(skip, skip + limit);
       }
 
-      res.json({
+      const result = {
         tasks,
         meta: {
           total,
@@ -403,7 +436,11 @@ async function start() {
           limit,
           totalPages: Math.ceil(total / limit) || 1,
         },
-      });
+      };
+
+      cache.set(cacheKeyPaged, result);
+      console.log(`CACHE SET: ${cacheKeyPaged}`);
+      return res.json(result);
     } catch (err) {
       console.error('Fetch tasks error:', err);
       res.status(500).json({ message: 'Failed to fetch tasks' });
@@ -414,6 +451,18 @@ async function start() {
   app.get('/tasks/:id', authenticateToken, async (req, res) => {
     try {
       const id = Number(req.params.id);
+      const cacheKey = `task_${req.params.id}`;
+
+      const cached = cache.get(cacheKey);
+      if (cached) {
+        cacheCounters.hits += 1;
+        console.log(`CACHE HIT: ${cacheKey}`);
+        return res.json(cached);
+      }
+
+      cacheCounters.misses += 1;
+      console.log(`CACHE MISS: ${cacheKey}`);
+
       let task = null;
 
       if (isMongoConnected) {
@@ -423,8 +472,11 @@ async function start() {
       }
 
       if (!task) return res.status(404).json({ message: 'Task not found' });
-      res.json(task);
-    } catch (err) {
+
+      cache.set(cacheKey, task);
+      console.log(`CACHE SET: ${cacheKey}`);
+      return res.json(task);
+    } catch {
       res.status(500).json({ message: 'Error retrieving task' });
     }
   });
@@ -446,6 +498,7 @@ async function start() {
         };
         const result = await tasksCol.insertOne(doc);
         const inserted = await tasksCol.findOne({ _id: result.insertedId });
+        invalidateUserTasksCache(req.user.id);
         return res.status(201).json(inserted);
       } else {
         const highestId = inMemoryTasks.length > 0 ? Math.max(...inMemoryTasks.map((t) => t.id)) : 0;
@@ -457,6 +510,7 @@ async function start() {
           createdAt: new Date(),
         };
         inMemoryTasks.push(newTask);
+        invalidateUserTasksCache(req.user.id);
         return res.status(201).json(newTask);
       }
     } catch (err) {
@@ -474,11 +528,17 @@ async function start() {
         const update = { $set: { ...req.body, updatedAt: new Date() } };
         const result = await tasksCol.findOneAndUpdate({ id }, update, { returnDocument: 'after' });
         if (!result.value) return res.status(404).json({ message: 'Task not found' });
+        invalidateUserTasksCache(result.value.userId || req.user.id);
+        cache.del(`task_${id}`);
+        console.log(`CACHE INVALIDATED: task_${id}`);
         return res.json(result.value);
       } else {
         const index = inMemoryTasks.findIndex((t) => t.id === id);
         if (index === -1) return res.status(404).json({ message: 'Task not found' });
         inMemoryTasks[index] = { ...inMemoryTasks[index], ...req.body, updatedAt: new Date() };
+        invalidateUserTasksCache(inMemoryTasks[index].userId || req.user.id);
+        cache.del(`task_${id}`);
+        console.log(`CACHE INVALIDATED: task_${id}`);
         return res.json(inMemoryTasks[index]);
       }
     } catch (err) {
@@ -494,17 +554,51 @@ async function start() {
 
       if (isMongoConnected) {
         const result = await tasksCol.deleteOne({ id });
+        invalidateUserTasksCache(req.user.id);
+        cache.del(`task_${id}`);
+        console.log(`CACHE INVALIDATED: task_${id}`);
         return res.json({ deletedCount: result.deletedCount });
       } else {
         const index = inMemoryTasks.findIndex((t) => t.id === id);
         if (index === -1) return res.json({ deletedCount: 0 });
+        const ownerId = inMemoryTasks[index].userId || req.user.id;
         inMemoryTasks.splice(index, 1);
+        invalidateUserTasksCache(ownerId);
+        cache.del(`task_${id}`);
+        console.log(`CACHE INVALIDATED: task_${id}`);
         return res.json({ deletedCount: 1 });
       }
     } catch (err) {
       console.error('Delete task error:', err);
       res.status(500).json({ message: 'Failed to delete task' });
     }
+  });
+
+  // GET /debug/cache — cache hit/miss statistics (Protected, no sensitive data)
+  app.get('/debug/cache', authenticateToken, (req, res) => {
+    const allKeys = cache.keys();
+    // Only expose this user's list-cache keys and generic task keys — never raw user data
+    const visibleKeys = allKeys.filter(
+      (k) => k.startsWith(`all_tasks_${req.user.id}`) || k.startsWith('task_')
+    );
+    const stats = cache.getStats();
+    res.json({
+      cacheHits: cacheCounters.hits,
+      cacheMisses: cacheCounters.misses,
+      keys: visibleKeys,
+      stats: {
+        hits: stats.hits,
+        misses: stats.misses,
+        keys: visibleKeys.length,
+      },
+    });
+  });
+
+  // DELETE /debug/cache — clear cache (Protected)
+  app.delete('/debug/cache', authenticateToken, (req, res) => {
+    cache.flushAll();
+    console.log('CACHE CLEARED by', req.user.email);
+    res.json({ message: 'Cache cleared successfully' });
   });
 
   app.listen(PORT, () => {
@@ -519,6 +613,8 @@ process.on('SIGINT', async () => {
   console.log('Shutting down...');
   try {
     if (client) await client.close();
-  } catch (e) {}
+  } catch {
+    // Best-effort shutdown: ignore close errors and exit cleanly.
+  }
   process.exit(0);
 });

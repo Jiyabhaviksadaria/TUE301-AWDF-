@@ -12,6 +12,17 @@ const getHeaders = () => {
   return headers;
 };
 
+// Prevent requests from hanging forever — always settle within 8s.
+const fetchWithTimeout = async (url, options = {}, timeoutMs = 8000) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 const handleUnauthorized = () => {
   authService.removeToken();
   if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
@@ -40,14 +51,19 @@ export const taskService = {
   // GET /tasks
   getAll: async (page = 1, limit = 5) => {
     try {
-      const res = await fetch(`${API_URL}?page=${page}&limit=${limit}`, {
+      const res = await fetchWithTimeout(`${API_URL}?page=${page}&limit=${limit}`, {
         method: 'GET',
         headers: getHeaders(),
       });
 
       if (res.status === 401) {
-        handleUnauthorized();
-        throw new Error('Unauthorized. Please login again.');
+        if (authService.getToken()) {
+          // A real JWT session is invalid/expired — force re-login.
+          handleUnauthorized();
+          throw new Error('Unauthorized. Please login again.');
+        }
+        // No JWT token (offline/mock login) — do not redirect; use local fallback.
+        throw new Error('Backend requires JWT login. Using local tasks.');
       }
 
       if (!res.ok) throw new Error('Failed to load tasks');
@@ -75,15 +91,20 @@ export const taskService = {
   // POST /tasks
   create: async (task) => {
     try {
-      const res = await fetch(API_URL, {
+      const res = await fetchWithTimeout(API_URL, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(task),
       });
 
       if (res.status === 401) {
-        handleUnauthorized();
-        throw new Error('Unauthorized. Please login again.');
+        if (authService.getToken()) {
+          // A real JWT session is invalid/expired — force re-login.
+          handleUnauthorized();
+          throw new Error('Unauthorized. Please login again.');
+        }
+        // No JWT token (offline/mock login) — do not redirect; use local fallback.
+        throw new Error('Backend requires JWT login. Using local tasks.');
       }
 
       if (!res.ok) {
@@ -108,15 +129,20 @@ export const taskService = {
   // PUT /tasks/:id
   update: async (id, task) => {
     try {
-      const res = await fetch(`${API_URL}/${id}`, {
+      const res = await fetchWithTimeout(`${API_URL}/${id}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(task),
       });
 
       if (res.status === 401) {
-        handleUnauthorized();
-        throw new Error('Unauthorized. Please login again.');
+        if (authService.getToken()) {
+          // A real JWT session is invalid/expired — force re-login.
+          handleUnauthorized();
+          throw new Error('Unauthorized. Please login again.');
+        }
+        // No JWT token (offline/mock login) — do not redirect; use local fallback.
+        throw new Error('Backend requires JWT login. Using local tasks.');
       }
 
       if (!res.ok) {
@@ -137,14 +163,19 @@ export const taskService = {
   // DELETE /tasks/:id
   delete: async (id) => {
     try {
-      const res = await fetch(`${API_URL}/${id}`, {
+      const res = await fetchWithTimeout(`${API_URL}/${id}`, {
         method: 'DELETE',
         headers: getHeaders(),
       });
 
       if (res.status === 401) {
-        handleUnauthorized();
-        throw new Error('Unauthorized. Please login again.');
+        if (authService.getToken()) {
+          // A real JWT session is invalid/expired — force re-login.
+          handleUnauthorized();
+          throw new Error('Unauthorized. Please login again.');
+        }
+        // No JWT token (offline/mock login) — do not redirect; use local fallback.
+        throw new Error('Backend requires JWT login. Using local tasks.');
       }
 
       if (!res.ok) {
